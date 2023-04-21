@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 import math
 import matplotlib.pyplot as plt
 from opt.partial_opt import MyAdam
+from opt.partial_loss import MaskedCrossEntropyLoss
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -33,6 +34,7 @@ dataset_train = MNIST(root='.', train=True, download=True, transform=ToTensor())
 dataset_test = MNIST(root='.', train=False, download=True, transform=ToTensor())
 dataloader_train = DataLoader(dataset_train, batch_size=32, shuffle=True)
 dataloader_train = DataLoader(dataset_test, batch_size=32, shuffle=True)
+
 
 sample_idx = torch.randint(len(dataloader_train), size=(1,)).item()
 print(len(dataloader_train))

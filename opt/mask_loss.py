@@ -1,9 +1,9 @@
-import torch
 import torch.nn as nn
+import torch.nn.functional
 import torch.nn.functional as F
-from torch import Tensor, min, max, minimum, maximum
+from torch import Tensor
 from typing import Optional
-class MaskLossCrossEntropyLoss(nn.CrossEntropyLoss):
+class MaskedCrossEntropyLoss(nn.CrossEntropyLoss):
     r"""This criterion computes the cross entropy loss between input logits
     and target.
 
@@ -139,31 +139,21 @@ class MaskLossCrossEntropyLoss(nn.CrossEntropyLoss):
     label_smoothing: float
 
     def __init__(self, weight: Optional[Tensor] = None, size_average=None, ignore_index: int = -100,
-                 reduce=None, reduction: str = 'mean',
-                 alpha: float = 0.0, beta: float = 0.0) -> None:
+                 reduce=None, reduction: str = 'mean', label_smoothing: float = 0.0, alpha: float = 0.0, beta: float = 1.0, device="cpu") -> None:
         super().__init__(weight, size_average, ignore_index, reduce, reduction)
-        self.alpha = alpha  # the lower mask level
-        self.beta = beta  # the higher mask level
+        self.alpha = alpha
+        self.beta = beta
+        self.device = device
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         # get right input and wrong input following
-        # beta_mask = torch.zeros(size=)
-        # check the targe dim and input dim
-        # if target dim < input dim
-        # expand target 1 more dim with one hot embedding
-        # using the extended target with mask
         if len(input.size()) > len(target.size()):
             class_num = input.size()[-1]
             target_digit = torch.nn.functional.one_hot(target, num_classes=class_num)
         else:
             target_digit = target
-
-        target_mask_1 = target_digit > 0
-        target_mask_0 = target_digit < 1
-        # change target to x if x < alpha (target = 1) and change target to x if x >= belta (target = 1)
-        masked_select = torch.logical_or(torch.logical_and(target_mask_0, input.le(self.alpha)), torch.logical_and(target_mask_1, input.ge(self.beta)))
-        # target_float = target_digit.type(torch.float)
-        # new_target = torch.where(masked_select, input, target_float)
-        input_new = torch.where(masked_select, input, torch.tensor(0.0))
-        return F.cross_entropy(input_new, target, weight=self.weight,
-                               ignore_index=self.ignore_index, reduction=self.reduction)
+        # target_mask_1 = torch.logical_and(target_digit > 0.5, input.ge(self.beta))
+        target_mask_0 = torch.logical_and(target_digit < 0.5, input.le(self.alpha))
+        # input_new = torch.where(torch.logical_not(target_mask_1), input, torch.tensor(1.0))
+        input_new = torch.where(torch.logical_not(target_mask_0), input, torch.tensor(0.0).to(self.device))
+        return super().forward(input_new, target)
