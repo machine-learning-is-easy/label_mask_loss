@@ -3898,7 +3898,7 @@
       <recent name="$PROJECT_DIR$/dataset" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.CIFA10_RMSprop_CROSSENTROPY">
+  <component name="RunManager" selected="Python.CIFA10_RMSprop_LWSCE">
     <configuration name="CIFA100_ADAM_CROSSENTROPY" type="PythonConfigurationType" factoryName="Python">
       <module name="label_mask_loss" />
       <option name="INTERPRETER_OPTIONS" value="" />
