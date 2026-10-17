@@ -28,7 +28,7 @@ class LabelWiseSignificanceCrossEntropy(nn.CrossEntropyLoss):
 
     def __init__(self, weight: Optional[Tensor] = None, size_average=None, ignore_index: int = -100,
                  reduce=None, reduction: str = 'mean', label_smoothing: float = 0.0, alpha: float = 0.0,
-                 device=None, num_class: int = 10, input_type="prob") -> None:
+                 device=None, num_class: int = 10, input_type="logits") -> None:
         super().__init__(weight, size_average, ignore_index, reduce, reduction, label_smoothing=label_smoothing)
         P0 = alpha/num_class
         self.zero = torch.tensor(0.0)
@@ -48,11 +48,15 @@ class LabelWiseSignificanceCrossEntropy(nn.CrossEntropyLoss):
         else:
             target_digit = target
 
-        if self.input_type != 'prob':
-            input = torch.softmax(input, dim=-1)
+        if self.input_type == 'prob':
+            # log-probabilities are valid logits for CrossEntropyLoss
+            input = torch.log(input)
 
-        target_mask_0 = torch.logical_not(torch.logical_and(target_digit < 0.5, input.le(self.expectation)))
-        input_new = torch.where(target_mask_0, input, self.zero)
+        with torch.no_grad():
+            prob = torch.softmax(input, dim=-1)
+            target_mask_0 = torch.logical_and(target_digit < 0.5, prob.le(self.expectation))
+        # masking a logit to -inf sets its probability to 0 and drops it from the softmax denominator
+        input_new = input.masked_fill(target_mask_0, float('-inf'))
         return super().forward(input_new, target)
 
 
@@ -99,10 +103,12 @@ class AdaptiveMaskedCrossEntropyLoss(nn.CrossEntropyLoss):
         else:
             target_digit = target
 
-        # get maximum of input with 0 target
-        mask_index = target_digit.le(0.5)  # get the value of the 0 target
-        maximum_value = torch.max(torch.masked_select(input, mask_index)) * 0.8
-        expect = torch.minimum(maximum_value, self.expectation)
-        target_mask_0 = torch.logical_and(target_digit < 0.5, input.le(expect))
-        input_new = torch.where(torch.logical_not(target_mask_0), input, self.zero)
+        with torch.no_grad():
+            prob = torch.softmax(input, dim=-1)
+            # get maximum of input with 0 target
+            mask_index = target_digit.le(0.5)  # get the value of the 0 target
+            maximum_value = torch.max(torch.masked_select(prob, mask_index)) * 0.8
+            expect = torch.minimum(maximum_value, self.expectation)
+            target_mask_0 = torch.logical_and(target_digit < 0.5, prob.le(expect))
+        input_new = input.masked_fill(target_mask_0, float('-inf'))
         return super().forward(input_new, target)

@@ -12,8 +12,7 @@ class ViTForImageClassification(nn.Module):
         configuration.use_bfloat16 = True
         self.vit = ViTModel(configuration)
         self.vit.from_pretrained("google/vit-base-patch16-224-in21k")
-        self.sf = nn.Softmax()
         self.num_labels = num_labels
     def forward(self, pixel_values):
         outputs = self.vit(pixel_values=pixel_values)
-        return self.sf(outputs.logits)
+        return outputs.logits

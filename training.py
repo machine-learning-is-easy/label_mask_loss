@@ -57,6 +57,21 @@ batch_size = 128
 current_folder = os.path.dirname(os.path.abspath(__file__))
 data_path = os.path.join(current_folder, 'data')
 
+VAL_RATIO = 0.1
+SPLIT_SEED = 1000
+
+def split_train_val(trainset):
+    # hold out a fixed part of the training set for model selection,
+    # so every run and loss function sees the same split and the test set stays unseen
+    val_size = int(len(trainset) * VAL_RATIO)
+    train_subset, val_subset = random_split(trainset, [len(trainset) - val_size, val_size],
+                                            generator=torch.Generator().manual_seed(SPLIT_SEED))
+    trainloader = torch.utils.data.DataLoader(train_subset, batch_size=batch_size,
+                                              shuffle=True, num_workers=0)
+    valloader = torch.utils.data.DataLoader(val_subset, batch_size=batch_size,
+                                            shuffle=False, num_workers=0)
+    return trainloader, valloader
+
 def reinitialization_model(model):
     for layer in model.children():
         if hasattr(layer, 'reset_parameters'):
@@ -70,8 +85,7 @@ if args.dataset == "CIFAR10":
 
     trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,
                                             download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=0)
+    trainloader, valloader = split_train_val(trainset)
 
     testset = torchvision.datasets.CIFAR10(root=data_path, train=False,
                                            download=True, transform=transform)
@@ -90,8 +104,7 @@ elif args.dataset == "CIFAR100":
 
     trainset = torchvision.datasets.CIFAR100(root=data_path, train=True,
                                             download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=0)
+    trainloader, valloader = split_train_val(trainset)
 
     testset = torchvision.datasets.CIFAR100(root=data_path, train=False,
                                            download=True, transform=transform)
@@ -108,7 +121,7 @@ elif args.dataset == "CIFAR100":
 
 elif args.dataset == 'IMAGENET':
     from cv.load_data import load_imagenet_dataset
-    trainloader, testloader, dataclasses_num, image_size = load_imagenet_dataset(TINY_IMAGENET_DATASET)
+    trainloader, valloader, testloader, dataclasses_num, image_size = load_imagenet_dataset(TINY_IMAGENET_DATASET)
     # net = ViTForImageClassification(num_labels=dataclasses_num, image_size=image_size)
     net = IMAGENET(num_class=dataclasses_num, num_channel=3)
     # reinitialization_model(net)
@@ -116,7 +129,7 @@ elif args.dataset == 'IMAGENET':
 
 elif args.dataset == 'POKEMON':
     from cv.load_data import load_pokemon_dataset
-    trainloader, testloader, dataclasses_num, image_size = load_pokemon_dataset(POKEMON_DATASET)
+    trainloader, valloader, testloader, dataclasses_num, image_size = load_pokemon_dataset(POKEMON_DATASET)
     net = ViTForImageClassification(num_labels=dataclasses_num, image_size=image_size)
     # net = IMAGENET(num_class=dataclasses_num, num_channel=3)
     # reinitialization_model(net)
@@ -124,7 +137,7 @@ elif args.dataset == 'POKEMON':
 
 elif args.dataset == 'OXFORDFLOWER':
     from cv.load_data import load_imagenet_dataset
-    trainloader, testloader, dataclasses_num, image_size = load_imagenet_dataset(OXFORD_FLOWER_DATASET)
+    trainloader, valloader, testloader, dataclasses_num, image_size = load_imagenet_dataset(OXFORD_FLOWER_DATASET)
     # config = ViTConfig(image_size=64, num_labels=dataclasses_num)
     net = ViTForImageClassification(num_labels=dataclasses_num, image_size=image_size)
     # net = IMAGENET(num_class=dataclasses_num, num_channel=3)
@@ -137,8 +150,7 @@ elif args.dataset == "EMNIST":
 
     trainset = torchvision.datasets.EMNIST(root=data_path, train=True, split="mnist",
                                              download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=0)
+    trainloader, valloader = split_train_val(trainset)
 
     testset = torchvision.datasets.EMNIST(root=data_path, train=False, split="mnist",
                                              download=True, transform=transform)
@@ -159,8 +171,7 @@ elif args.dataset == "FashionMNIST":
                                  (0.1307,), (0.3081,))])
     trainset = torchvision.datasets.FashionMNIST(root=data_path, train=True,
                                            download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=0)
+    trainloader, valloader = split_train_val(trainset)
 
     testset = torchvision.datasets.FashionMNIST(root=data_path, train=False,
                                           download=True, transform=transform)
@@ -181,10 +192,9 @@ elif args.dataset == "MNIST":
                                  (0.1307,), (0.3081,))])
     trainset = torchvision.datasets.MNIST(root=data_path, train=True,
                                            download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=0)
+    trainloader, valloader = split_train_val(trainset)
 
-    testset = torchvision.datasets.FashionMNIST(root=data_path, train=False,
+    testset = torchvision.datasets.MNIST(root=data_path, train=False,
                                           download=True, transform=transform)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                              shuffle=False, num_workers=0)
@@ -204,8 +214,7 @@ elif args.dataset == "KMNIST":
                                  (0.1307,), (0.3081,))])
     trainset = torchvision.datasets.KMNIST(root=data_path, train=True,
                                            download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=0)
+    trainloader, valloader = split_train_val(trainset)
 
     testset = torchvision.datasets.KMNIST(root=data_path, train=False,
                                           download=True, transform=transform)
@@ -226,8 +235,7 @@ elif args.dataset == "QMNIST":
                                  (0.1307,), (0.3081,))])
     trainset = torchvision.datasets.QMNIST(root=data_path, train=True,
                                            download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=0)
+    trainloader, valloader = split_train_val(trainset)
 
     testset = torchvision.datasets.QMNIST(root=data_path, train=False,
                                           download=True, transform=transform)
@@ -290,13 +298,13 @@ def define_scheduler(optimizer):
     return ReduceLROnPlateau(optimizer, patience=10)
 scheduler = define_scheduler(optimizer)
 ########################################################################
-def run_test(model_path):
+def run_test(loader):
     correct = 0
     total = 0
-    net.load_state_dict(torch.load(model_path))
+    net.eval()
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
-        for data in testloader:
+        for data in loader:
             # calculate outputs by running images through the network
             if "IMAGENET" in args.dataset:
                 images = data["image"].to(device)
@@ -316,6 +324,7 @@ def run_test(model_path):
             labels = labels.to(device)
             correct += (predicted == labels).sum().item()
 
+    net.train()
     return 100 * correct / total
 
 def L2_reg(parameters):
@@ -329,8 +338,13 @@ def save_model(net, model_path):
 
 
 # 4. Train the network
+result_dir = os.path.join(current_folder, 'result', '{}_{}_{}_result'.format(args.dataset, args.opt_alg, args.lossfunction))
+os.makedirs(result_dir, exist_ok=True)
+model_path = os.path.join(current_folder, 'model', '{}_{}_{}_net.pth'.format(args.dataset, args.opt_alg, args.lossfunction))
+summary = []
 for t in range(10): # train model 10 times
     acc = []
+    best_val_acc, best_epoch, test_acc_at_best = -1, -1, -1
     for epoch in range(1,int(args.epoch)):  # loop over the dataset multiple times
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
@@ -363,19 +377,22 @@ for t in range(10): # train model 10 times
 
             running_loss += loss.item()
             # print("{} step loss is {}".format(i, loss.item()))
-        model_path = os.path.join(current_folder, 'model', '{}_{}_{}_net.pth'.format(args.dataset, args.opt_alg, args.lossfunction))
-        save_model(net, model_path)
-        acc_epoch = run_test(model_path)
-        # scheduler.step(metrics=acc_epoch)
-        acc_epoch = round(acc_epoch, 2)
+        val_acc = round(run_test(valloader), 2)
+        # test accuracy is only recorded; model selection uses the validation set
+        test_acc = round(run_test(testloader), 2)
+        # scheduler.step(metrics=val_acc)
+        if val_acc > best_val_acc:
+            best_val_acc, best_epoch, test_acc_at_best = val_acc, epoch, test_acc
+            save_model(net, model_path)
         L2 = L2_reg(net.parameters())
-        acc.append([epoch, acc_epoch, round(running_loss, 2), L2])
-        print("{} epoch acc is {}, L2 is {}".format(epoch, acc_epoch, L2))
-    print('Finished Training')
-    result_file = os.path.join(os.path.join(current_folder, 'result', '{}_{}_{}_result'.format(args.dataset, args.opt_alg, args.lossfunction), "{}.csv".format(str(t))))
-    if not os.path.exists(os.path.dirname(result_file)):
-        os.makedirs(os.path.dirname(result_file))
-    pd.DataFrame(acc).to_csv(result_file, header=["epoch", "training_acc", "training_loss", "L2"], index=False)
+        acc.append([epoch, val_acc, test_acc, round(running_loss, 2), L2])
+        print("{} epoch val acc is {}, test acc is {}, L2 is {}".format(epoch, val_acc, test_acc, L2))
+    print('Finished Training, best val acc {} at epoch {}, test acc {}'.format(best_val_acc, best_epoch, test_acc_at_best))
+    result_file = os.path.join(result_dir, "{}.csv".format(str(t)))
+    pd.DataFrame(acc).to_csv(result_file, header=["epoch", "val_acc", "test_acc", "training_loss", "L2"], index=False)
+    summary.append([t, best_epoch, best_val_acc, test_acc_at_best])
+    pd.DataFrame(summary).to_csv(os.path.join(result_dir, "summary.csv"),
+                                 header=["run", "best_epoch", "best_val_acc", "test_acc"], index=False)
     if isinstance(net, KMNISTNet):
         del net
         del optimizer
