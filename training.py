@@ -34,6 +34,9 @@ parser.add_argument('--dataset', '-d', dest='dataset', default="CIFAR10", help='
 parser.add_argument('--opt_alg', '-a', dest='opt_alg', default="SGD", help='opt_alg', required=False)
 parser.add_argument('--lossfunction', '-l', dest='lossfunction', default="MASKEDLABEL", help='lossfunction', required=False)
 parser.add_argument('--lr', '-lr', dest='lr', type=float, default=1e-4, help='learning rate')
+parser.add_argument('--runs', dest='runs', type=int, default=10, help='number of independent training runs')
+parser.add_argument('--alpha', dest='alpha', type=float, default=0.2, help='alpha of LWSCE / ALWSCE')
+parser.add_argument('--tag', dest='tag', default='', help='suffix for result and model names, e.g. lr1e-3')
 
 
 args = parser.parse_args()
@@ -252,15 +255,15 @@ else:
     raise Exception("Unable to support the data {}".format(args.dataset))
 
 if args.lossfunction == "LWSCE":
-    criterion = LabelWiseSignificanceCrossEntropy(alpha=0.2, num_class=dataclasses_num, device=device)
+    criterion = LabelWiseSignificanceCrossEntropy(alpha=args.alpha, num_class=dataclasses_num, device=device)
 elif args.lossfunction == 'CROSSENTROPY':
     criterion = nn.CrossEntropyLoss()
 elif args.lossfunction == 'LABELSMOOTHING':
     criterion = nn.CrossEntropyLoss(label_smoothing=0.2)
 elif args.lossfunction == "ALWSCE":
-    criterion = AdaptiveMaskedCrossEntropyLoss(alpha=0.2, num_class=dataclasses_num, device=device)
+    criterion = AdaptiveMaskedCrossEntropyLoss(alpha=args.alpha, num_class=dataclasses_num, device=device)
 elif args.lossfunction == "LWSCE+LS":
-    criterion = AdaptiveMaskedCrossEntropyLoss(alpha=0.2, num_class=dataclasses_num, label_smoothing=0.2, device=device)
+    criterion = AdaptiveMaskedCrossEntropyLoss(alpha=args.alpha, num_class=dataclasses_num, label_smoothing=0.2, device=device)
 else:
     raise Exception("Unaccept loss function {}".format(args.lossfunction))
 
@@ -338,11 +341,14 @@ def save_model(net, model_path):
 
 
 # 4. Train the network
-result_dir = os.path.join(current_folder, 'result', '{}_{}_{}_result'.format(args.dataset, args.opt_alg, args.lossfunction))
+run_name = '{}_{}_{}'.format(args.dataset, args.opt_alg, args.lossfunction)
+if args.tag:
+    run_name = '{}_{}'.format(run_name, args.tag)
+result_dir = os.path.join(current_folder, 'result', '{}_result'.format(run_name))
 os.makedirs(result_dir, exist_ok=True)
-model_path = os.path.join(current_folder, 'model', '{}_{}_{}_net.pth'.format(args.dataset, args.opt_alg, args.lossfunction))
+model_path = os.path.join(current_folder, 'model', '{}_net.pth'.format(run_name))
 summary = []
-for t in range(10): # train model 10 times
+for t in range(args.runs): # train model args.runs times
     acc = []
     best_val_acc, best_epoch, test_acc_at_best = -1, -1, -1
     for epoch in range(1,int(args.epoch)):  # loop over the dataset multiple times
