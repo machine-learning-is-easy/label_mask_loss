@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import math
 import matplotlib.pyplot as plt
 from loss.partial_opt import MyAdam
-from loss.partial_loss import MaskedCrossEntropyLoss
+from loss.partial_loss import LabelWiseSignificanceCrossEntropy
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -40,7 +40,7 @@ len(dataloader)
 model = Net().to(device)
 optimizer = MyAdam(model.parameters(), weight_decay=0.00001)
 loss_fn = nn.CrossEntropyLoss()
-# loss_fn = MaskedCrossEntropyLoss(alpha=0.05, beta=0.95)
+# loss_fn = LabelWiseSignificanceCrossEntropy(alpha=0.05, num_class=10, input_type="prob")
 
 num_epochs = 10
 for i in range(num_epochs):

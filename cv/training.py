@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
-from loss.partial_loss import MaskedCrossEntropyLoss, AdaptiveMaskedCrossEntropyLoss
+from loss.partial_loss import LabelWiseSignificanceCrossEntropy, AdaptiveMaskedCrossEntropyLoss
 from model_define.defined_model import KMNISTNet, CIFARNet
 from torchvision.ops.focal_loss import sigmoid_focal_loss
 # from model_define.hugging_face_vit import ViTForImageClassification
@@ -220,7 +220,7 @@ else:
     raise Exception("Unable to support the data {}".format(args.dataset))
 torchvision.ops.focal_loss
 if args.lossfunction == "LWSCE":
-    criterion = MaskedCrossEntropyLoss(alpha=0.2, num_class=dataclasses_num, device=device)
+    criterion = LabelWiseSignificanceCrossEntropy(alpha=0.2, num_class=dataclasses_num, device=device)
 elif args.lossfunction == 'CROSSENTROPY':
     criterion = nn.CrossEntropyLoss()
 elif args.lossfunction == "FOCAL":

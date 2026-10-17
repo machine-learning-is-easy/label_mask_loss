@@ -263,7 +263,7 @@ elif args.lossfunction == 'LABELSMOOTHING':
 elif args.lossfunction == "ALWSCE":
     criterion = AdaptiveMaskedCrossEntropyLoss(alpha=args.alpha, num_class=dataclasses_num, device=device)
 elif args.lossfunction == "LWSCE+LS":
-    criterion = AdaptiveMaskedCrossEntropyLoss(alpha=args.alpha, num_class=dataclasses_num, label_smoothing=0.2, device=device)
+    criterion = LabelWiseSignificanceCrossEntropy(alpha=args.alpha, num_class=dataclasses_num, label_smoothing=0.2, device=device)
 else:
     raise Exception("Unaccept loss function {}".format(args.lossfunction))
 
@@ -291,10 +291,10 @@ def defineopt(model):
         optimizer = optim.RAdam(model.parameters(), lr=args.lr)
     elif args.opt_alg == "ADADELTA":
         optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
-    elif args.opt_alg == "LWADAM":
+    elif args.opt_alg == "ADAMW":
         optimizer = optim.AdamW(model.parameters(), lr=args.lr)
     else:
-        raise Exception("Not accept optimizer of {}".args.opt_alg)
+        raise Exception("Not accept optimizer of {}".format(args.opt_alg))
     return optimizer
 optimizer = defineopt(net)
 def define_scheduler(optimizer):
@@ -371,9 +371,6 @@ for t in range(args.runs): # train model args.runs times
                 outputs = net(inputs)
             except Exception as ex:
                 raise Exception("Inference model encounter Exceptions")
-            if args.lossfunction == 'FOCAL':
-                class_num = inputs.size()[-1]
-                labels = torch.nn.functional.one_hot(labels, num_classes=class_num)
 
             loss = criterion(outputs, labels)
             loss.backward()

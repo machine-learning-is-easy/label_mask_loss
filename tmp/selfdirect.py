@@ -7,7 +7,7 @@ import numpy as np
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
-from loss.partial_loss import MaskedCrossEntropyLoss, AdaptiveMaskedCrossEntropyLoss
+from loss.partial_loss import LabelWiseSignificanceCrossEntropy, AdaptiveMaskedCrossEntropyLoss
 from model_define.defined_model import (KMNISTNet, CIFARNet, CIFARNet_SelfDirect, KMNISTNet_Directed,
                                         KMNISTNet_Directed_Norm, CIFARNet_SelfDirect_Norm, KMNISTNet_Directed_Dual, CIFARNet_SelfDirect_Dual)
 # from model_define.hugging_face_vit import ViTForImageClassification

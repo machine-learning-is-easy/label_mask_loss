@@ -5,6 +5,28 @@ import math
 from torch import Tensor
 from typing import Optional
 from torch.nn.functional import nll_loss, kl_div
+
+
+def masked_cross_entropy(criterion: nn.CrossEntropyLoss, input: Tensor, target: Tensor, mask: Tensor) -> Tensor:
+    # masking a logit to -inf sets its probability to 0 and drops it from the softmax denominator
+    input = input.masked_fill(mask, float('-inf'))
+    if criterion.label_smoothing == 0:
+        return nn.CrossEntropyLoss.forward(criterion, input, target)
+
+    # label smoothing is spread over the kept classes only, the masked ones have log-probability -inf
+    if criterion.weight is not None or target.is_floating_point():
+        raise NotImplementedError("label smoothing with masking supports unweighted class-index targets only")
+    log_prob = F.log_softmax(input, dim=-1).masked_fill(mask, 0.0)
+    nll = F.nll_loss(log_prob, target, ignore_index=criterion.ignore_index, reduction='none')
+    smooth = -log_prob.sum(dim=-1) / torch.logical_not(mask).sum(dim=-1)
+    loss = (1 - criterion.label_smoothing) * nll + criterion.label_smoothing * smooth
+    if criterion.reduction == 'mean':
+        return loss.mean()
+    if criterion.reduction == 'sum':
+        return loss.sum()
+    return loss
+
+
 class LabelWiseSignificanceCrossEntropy(nn.CrossEntropyLoss):
     r"""
     Examples::
@@ -55,9 +77,7 @@ class LabelWiseSignificanceCrossEntropy(nn.CrossEntropyLoss):
         with torch.no_grad():
             prob = torch.softmax(input, dim=-1)
             target_mask_0 = torch.logical_and(target_digit < 0.5, prob.le(self.expectation))
-        # masking a logit to -inf sets its probability to 0 and drops it from the softmax denominator
-        input_new = input.masked_fill(target_mask_0, float('-inf'))
-        return super().forward(input_new, target)
+        return masked_cross_entropy(self, input, target, target_mask_0)
 
 
 class AdaptiveMaskedCrossEntropyLoss(nn.CrossEntropyLoss):
@@ -87,7 +107,7 @@ class AdaptiveMaskedCrossEntropyLoss(nn.CrossEntropyLoss):
     def __init__(self, weight: Optional[Tensor] = None, size_average=None, ignore_index: int = -100,
                  reduce=None, reduction: str = 'mean', label_smoothing: float = 0.0, alpha: float = 0.0, device=None,
                  num_class: int = 10) -> None:
-        super().__init__(weight, size_average, ignore_index, reduce, reduction)
+        super().__init__(weight, size_average, ignore_index, reduce, reduction, label_smoothing=label_smoothing)
         P0 = alpha / num_class
         self.expectation = torch.tensor(P0 * 2)
         self.zero = torch.tensor(0.0)
@@ -105,10 +125,9 @@ class AdaptiveMaskedCrossEntropyLoss(nn.CrossEntropyLoss):
 
         with torch.no_grad():
             prob = torch.softmax(input, dim=-1)
-            # get maximum of input with 0 target
+            # get maximum of input with 0 target, per sample
             mask_index = target_digit.le(0.5)  # get the value of the 0 target
-            maximum_value = torch.max(torch.masked_select(prob, mask_index)) * 0.8
+            maximum_value = prob.masked_fill(torch.logical_not(mask_index), -1.0).max(dim=-1, keepdim=True).values * 0.8
             expect = torch.minimum(maximum_value, self.expectation)
             target_mask_0 = torch.logical_and(target_digit < 0.5, prob.le(expect))
-        input_new = input.masked_fill(target_mask_0, float('-inf'))
-        return super().forward(input_new, target)
+        return masked_cross_entropy(self, input, target, target_mask_0)
