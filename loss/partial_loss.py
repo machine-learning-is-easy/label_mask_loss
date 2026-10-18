@@ -50,12 +50,16 @@ class LabelWiseSignificanceCrossEntropy(nn.CrossEntropyLoss):
 
     def __init__(self, weight: Optional[Tensor] = None, size_average=None, ignore_index: int = -100,
                  reduce=None, reduction: str = 'mean', label_smoothing: float = 0.0, alpha: float = 0.0,
-                 device=None, num_class: int = 10, input_type="logits") -> None:
+                 device=None, num_class: int = 10, input_type="logits", keep_hardest: bool = True) -> None:
         super().__init__(weight, size_average, ignore_index, reduce, reduction, label_smoothing=label_smoothing)
         P0 = alpha/num_class
         self.zero = torch.tensor(0.0)
         self.expectation = torch.tensor(2 * P0)
         self.input_type = input_type
+        # never mask the most probable non-target class. Without it, a threshold 2 * alpha / num_class above
+        # the uniform probability 1 / num_class (alpha >= 0.5) masks every non-target class at initialization,
+        # the loss becomes 0 and training never starts
+        self.keep_hardest = keep_hardest
 
         if device:
             self.expectation = self.expectation.to(device)
@@ -76,7 +80,11 @@ class LabelWiseSignificanceCrossEntropy(nn.CrossEntropyLoss):
 
         with torch.no_grad():
             prob = torch.softmax(input, dim=-1)
-            target_mask_0 = torch.logical_and(target_digit < 0.5, prob.le(self.expectation))
+            non_target = target_digit < 0.5
+            target_mask_0 = torch.logical_and(non_target, prob.le(self.expectation))
+            if self.keep_hardest:
+                hardest = prob.masked_fill(torch.logical_not(non_target), -1.0).argmax(dim=-1, keepdim=True)
+                target_mask_0.scatter_(-1, hardest, False)
         return masked_cross_entropy(self, input, target, target_mask_0)
 
 

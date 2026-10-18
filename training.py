@@ -37,6 +37,8 @@ parser.add_argument('--lossfunction', '-l', dest='lossfunction', default="MASKED
 parser.add_argument('--lr', '-lr', dest='lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--runs', dest='runs', type=int, default=10, help='number of independent training runs')
 parser.add_argument('--alpha', dest='alpha', type=float, default=0.2, help='alpha of LWSCE / ALWSCE')
+parser.add_argument('--keep_hardest', dest='keep_hardest', action=argparse.BooleanOptionalAction, default=True,
+                    help='LWSCE never masks the most probable non-target class; --no-keep_hardest is the masking of pilot 2')
 parser.add_argument('--tag', dest='tag', default='', help='suffix for result and model names, e.g. lr1e-3')
 parser.add_argument('--model', dest='model', default='default', choices=['default', 'resnet18', 'resnet50'],
                     help='network; default is the dataset specific one, resnets support CIFAR10 / CIFAR100 only')
@@ -275,7 +277,7 @@ if args.model != 'default':
     make_net = lambda: resnet(num_class=dataclasses_num, num_channel=num_channel)
 
 if args.lossfunction == "LWSCE":
-    criterion = LabelWiseSignificanceCrossEntropy(alpha=args.alpha, num_class=dataclasses_num, device=device)
+    criterion = LabelWiseSignificanceCrossEntropy(alpha=args.alpha, num_class=dataclasses_num, keep_hardest=args.keep_hardest, device=device)
 elif args.lossfunction == 'CROSSENTROPY':
     criterion = nn.CrossEntropyLoss()
 elif args.lossfunction == 'LABELSMOOTHING':
@@ -283,7 +285,7 @@ elif args.lossfunction == 'LABELSMOOTHING':
 elif args.lossfunction == "ALWSCE":
     criterion = AdaptiveMaskedCrossEntropyLoss(alpha=args.alpha, num_class=dataclasses_num, device=device)
 elif args.lossfunction == "LWSCE+LS":
-    criterion = LabelWiseSignificanceCrossEntropy(alpha=args.alpha, num_class=dataclasses_num, label_smoothing=0.2, device=device)
+    criterion = LabelWiseSignificanceCrossEntropy(alpha=args.alpha, num_class=dataclasses_num, keep_hardest=args.keep_hardest, label_smoothing=0.2, device=device)
 else:
     raise Exception("Unaccept loss function {}".format(args.lossfunction))
 
