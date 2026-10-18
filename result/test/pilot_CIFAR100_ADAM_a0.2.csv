@@ -1,0 +1,7 @@
+loss,lr,runs,val_acc,test_acc,test_std,selected
+CROSSENTROPY,1e-3,3,36.86,36.16,1.39,*
+CROSSENTROPY,3e-4,3,36.08,35.48,0.17,
+CROSSENTROPY,1e-4,3,32.2,31.66,0.77,
+LWSCE,1e-3,3,25.21,24.71,20.55,
+LWSCE,3e-4,3,36.73,36.07,0.8,*
+LWSCE,1e-4,3,32.59,32.16,0.32,

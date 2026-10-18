@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import torch
 import torch.nn as nn
+from loss.dynamic_encoding import SwitchEncoding
 import torch.nn.functional as F
 torch.manual_seed(1000)
 torch.cuda.manual_seed(1000)
